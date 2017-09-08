@@ -5,70 +5,67 @@
 #include <stdlib.h>
 
 static void
-ins(unsigned short w) {
+word(unsigned short w) {
     putchar(w >> 8);
     putchar(w);
 }
 
 static void
-ins_hnnn(unsigned h, unsigned nnn) {
-    ins(h << 12 | nnn);
+hnnn(unsigned h, unsigned nnn) {
+    word(h << 12 | nnn);
 }
 
 static void
-ins_hxkk(unsigned h, unsigned x, unsigned kk) {
-    ins(h << 12 | x << 8 | kk);
+hxkk(unsigned h, unsigned x, unsigned kk) {
+    word(h << 12 | x << 8 | kk);
 }
 
 static void
-ins_hxyn(unsigned h, unsigned x, unsigned y, unsigned n) {
-    ins(h << 12 | x << 8 | y << 4 | n);
+hxyn(unsigned h, unsigned x, unsigned y, unsigned n) {
+    word(h << 12 | x << 8 | y << 4 | n);
 }
 
 }
 
 %token_type { int }
 
-unit ::= instructions.
+unit ::= instrs.
 
-instructions ::= instructions instruction.
-instructions ::= .
+instrs ::= instrs instr.
+instrs ::= instr.
 
-instruction ::= CLS. { ins(0x00e0); }
-instruction ::= RET. { ins(0x00ee); }
-instruction ::= SYS INTEGER(addr). { ins_hnnn(0, addr); }
-instruction ::= JP INTEGER(addr). { ins_hnnn(1, addr); }
-instruction ::= CALL INTEGER(addr). { ins_hnnn(2, addr); }
-instruction ::= SE V(x) COMMA INTEGER(byte). { ins_hxkk(3, x, byte); }
-instruction ::= SNE V(x) COMMA INTEGER(byte). { ins_hxkk(4, x, byte); }
-instruction ::= SE V(x) COMMA V(y). { ins_hxyn(5, x, y, 0); }
-instruction ::= LD V(x) COMMA INTEGER(byte). { ins_hxkk(6, x, byte); }
-instruction ::= ADD V(x) COMMA INTEGER(byte). { ins_hxkk(7, x, byte); }
-instruction ::= LD V(x) COMMA V(y). { ins_hxyn(8, x, y, 0); }
-instruction ::= OR V(x) COMMA V(y). { ins_hxyn(8, x, y, 1); }
-instruction ::= AND V(x) COMMA V(y). { ins_hxyn(8, x, y, 2); }
-instruction ::= XOR V(x) COMMA V(y). { ins_hxyn(8, x, y, 3); }
-instruction ::= ADD V(x) COMMA V(y). { ins_hxyn(8, x, y, 4); }
-instruction ::= SUB V(x) COMMA V(y). { ins_hxyn(8, x, y, 5); }
-instruction ::= SHR V(x). { ins_hxkk(8, x, 0x06); }
-instruction ::= SUBN V(x) COMMA V(y). { ins_hxyn(8, x, y, 7); }
-instruction ::= SHL V(x). { ins_hxkk(8, x, 0x0E); }
-instruction ::= SNE V(x) COMMA V(y). { ins_hxyn(9, x, y, 0); }
-instruction ::= LD I COMMA INTEGER(addr). { ins_hnnn(0xA, addr); }
-instruction ::= JP V(x) COMMA INTEGER(addr). { if (x) exit(1);
-                                               ins_hnnn(0xB, addr); }
-instruction ::= RND V(x) COMMA INTEGER(byte). { ins_hxkk(0xC, x, byte); }
-instruction ::= DRW V(x) COMMA V(y) COMMA INTEGER(nibble).
-                { ins_hxyn(0xD, x, y, nibble); }
-instruction ::= SKP V(x). { ins_hxkk(0xE, x, 0x9E); }
-instruction ::= SKNP V(x). { ins_hxkk(0xE, x, 0xA1); }
-instruction ::= LD V(x) COMMA DT. { ins_hxkk(0xF, x, 0x07); }
-instruction ::= LD V(x) COMMA K. { ins_hxkk(0xF, x, 0x0A); }
-instruction ::= LD DT COMMA V(x). { ins_hxkk(0xF, x, 0x15); }
-instruction ::= LD ST COMMA V(x). { ins_hxkk(0xF, x, 0x18); }
-instruction ::= ADD I COMMA V(x). { ins_hxkk(0xF, x, 0x1E); }
-instruction ::= LD F COMMA V(x). { ins_hxkk(0xF, x, 0x29); }
-instruction ::= LD B COMMA V(x). { ins_hxkk(0xF, x, 0x33); }
-instruction ::= LD II COMMA V(x). { ins_hxkk(0xF, x, 0x55); }
-instruction ::= LD V(x) COMMA II. { ins_hxkk(0xF, x, 0x65); }
+instr ::= CLS. { word(0x00e0); }
+instr ::= RET. { word(0x00ee); }
+instr ::= JP INTEGER(addr). { hnnn(1, addr); }
+instr ::= CALL INTEGER(addr). { hnnn(2, addr); }
+instr ::= SE V(x) COMMA INTEGER(byte). { hxkk(3, x, byte); }
+instr ::= SNE V(x) COMMA INTEGER(byte). { hxkk(4, x, byte); }
+instr ::= SE V(x) COMMA V(y). { hxyn(5, x, y, 0); }
+instr ::= LD V(x) COMMA INTEGER(byte). { hxkk(6, x, byte); }
+instr ::= ADD V(x) COMMA INTEGER(byte). { hxkk(7, x, byte); }
+instr ::= LD V(x) COMMA V(y). { hxyn(8, x, y, 0); }
+instr ::= OR V(x) COMMA V(y). { hxyn(8, x, y, 1); }
+instr ::= AND V(x) COMMA V(y). { hxyn(8, x, y, 2); }
+instr ::= XOR V(x) COMMA V(y). { hxyn(8, x, y, 3); }
+instr ::= ADD V(x) COMMA V(y). { hxyn(8, x, y, 4); }
+instr ::= SUB V(x) COMMA V(y). { hxyn(8, x, y, 5); }
+instr ::= SHR V(x). { hxkk(8, x, 0x06); }
+instr ::= SUBN V(x) COMMA V(y). { hxyn(8, x, y, 7); }
+instr ::= SHL V(x). { hxkk(8, x, 0x0E); }
+instr ::= SNE V(x) COMMA V(y). { hxyn(9, x, y, 0); }
+instr ::= LD I COMMA INTEGER(addr). { hnnn(0xA, addr); }
+instr ::= JP V(x) COMMA INTEGER(addr). { x ? exit(1) : hnnn(0xB, addr); }
+instr ::= RND V(x) COMMA INTEGER(byte). { hxkk(0xC, x, byte); }
+instr ::= DRW V(x) COMMA V(y) COMMA INTEGER(nibble). { hxyn(0xD, x, y, nibble); }
+instr ::= SKP V(x). { hxkk(0xE, x, 0x9E); }
+instr ::= SKNP V(x). { hxkk(0xE, x, 0xA1); }
+instr ::= LD V(x) COMMA DT. { hxkk(0xF, x, 0x07); }
+instr ::= LD V(x) COMMA K. { hxkk(0xF, x, 0x0A); }
+instr ::= LD DT COMMA V(x). { hxkk(0xF, x, 0x15); }
+instr ::= LD ST COMMA V(x). { hxkk(0xF, x, 0x18); }
+instr ::= ADD I COMMA V(x). { hxkk(0xF, x, 0x1E); }
+instr ::= LD F COMMA V(x). { hxkk(0xF, x, 0x29); }
+instr ::= LD B COMMA V(x). { hxkk(0xF, x, 0x33); }
+instr ::= LD II COMMA V(x). { hxkk(0xF, x, 0x55); }
+instr ::= LD V(x) COMMA II. { hxkk(0xF, x, 0x65); }
 

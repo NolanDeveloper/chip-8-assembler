@@ -56,7 +56,6 @@ restart:
 
         'CLS'   { return CLS; }
         'RET'   { return RET; }
-        'SYS'   { return SYS; }
         'JP'    { return JP; }
         'CALL'  { return CALL; }
         'SE'    { return SE; }
