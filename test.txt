@@ -1,0 +1,12 @@
+.start:
+.xd:
+    RET
+.b:
+    RET
+    JP .start
+    JP V0, .start
+
+.loop:
+    ADD V1, 42
+    LD VB, VA
+    OR V7, V8

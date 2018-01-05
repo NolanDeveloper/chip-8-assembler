@@ -1,7 +1,0 @@
-.*
-*.o
-*.out
-as
-as.c
-grammar.c
-grammar.h
