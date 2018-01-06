@@ -1,9 +1,7 @@
 %include {
 
-#include <assert.h>
 #include <stdint.h>
-
-#include <uthash.h>
+#include <assert.h> /* lempar.c requires this include */
 
 #include "parser_common.h"
 #include "lexer.h"
@@ -25,11 +23,11 @@ hxyn(uint16_t h, uint16_t x, uint16_t y, uint16_t n) {
 
 } /* end %include */
 
-%token_type     { union TokenData }
+%token_type         { union TokenData }
 
-%type address   { int }
-%type v         { int }
-%type instruction { uint16_t }
+%type address       { int }
+%type v             { int }
+%type instruction   { uint16_t }
 
 %extra_argument     { struct Parse * parse }
 %syntax_error       { parse->error(); }
@@ -39,8 +37,8 @@ start ::= unit.
 unit ::= unit instructionOrLabel.
 unit ::= instructionOrLabel.
 
-instructionOrLabel ::= instruction(A). { parse->addInstruction(A); }
-instructionOrLabel ::= LABEL(A) COLON. { parse->createLabel(A.sValue); }
+instructionOrLabel ::= instruction(A). { parse->addInstruction(A);  }
+instructionOrLabel ::= LABEL(A) COLON. { parse->addLabel(A.sValue); }
 
 v(A) ::= V0. { A = 0x0; }
 v(A) ::= V1. { A = 0x1; }
@@ -66,11 +64,11 @@ instruction(A) ::= CLS.                       { A = 0x00e0; }
 instruction(A) ::= RET.                       { A = 0x00ee; }
 instruction(A) ::= JP address(B).             { A = hnnn(1, B); }
 instruction(A) ::= CALL address(B).           { A = hnnn(2, B); }
-instruction(A) ::= SE v(B) COMMA address(C).  { A = hxkk(3, B, C); }
-instruction(A) ::= SNE v(B) COMMA address(C). { A = hxkk(4, B, C); }
+instruction(A) ::= SE v(B) COMMA INTEGER(C).  { A = hxkk(3, B, C.iValue); }
+instruction(A) ::= SNE v(B) COMMA INTEGER(C). { A = hxkk(4, B, C.iValue); }
 instruction(A) ::= SE v(B) COMMA v(C).        { A = hxyn(5, B, C, 0); }
-instruction(A) ::= LD v(B) COMMA address(C).  { A = hxkk(6, B, C); }
-instruction(A) ::= ADD v(B) COMMA address(C). { A = hxkk(7, B, C); }
+instruction(A) ::= LD v(B) COMMA INTEGER(C).  { A = hxkk(6, B, C.iValue); }
+instruction(A) ::= ADD v(B) COMMA INTEGER(C). { A = hxkk(7, B, C.iValue); }
 instruction(A) ::= LD v(B) COMMA v(C).        { A = hxyn(8, B, C, 0); }
 instruction(A) ::= OR v(B) COMMA v(C).        { A = hxyn(8, B, C, 1); }
 instruction(A) ::= AND v(B) COMMA v(C).       { A = hxyn(8, B, C, 2); }
@@ -83,7 +81,7 @@ instruction(A) ::= SHL v(B).                  { A = hxkk(8, B, 0x0E); }
 instruction(A) ::= SNE v(B) COMMA v(C).       { A = hxyn(9, B, C, 0); }
 instruction(A) ::= LD I COMMA address(B).     { A = hnnn(0xA, B); }
 instruction(A) ::= JP V0 COMMA address(B).    { A = hnnn(0xB, B); }
-instruction(A) ::= RND v(B) COMMA address(C). { A = hxkk(0xC, B, C); }
+instruction(A) ::= RND v(B) COMMA INTEGER(C). { A = hxkk(0xC, B, C.iValue); }
 instruction(A) ::= DRW v(B) COMMA v(C) COMMA INTEGER(D). 
                                      { A = hxyn(0xD, B, C, D.iValue); }
 instruction(A) ::= SKP v(B).         { A = hxkk(0xE, B, 0x9E); }

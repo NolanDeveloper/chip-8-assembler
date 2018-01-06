@@ -21,14 +21,6 @@ extern void *ParseAlloc(void *(*mallocProc)(size_t));
 extern void ParseFree(void *p, void (*freeProc)(void*));
 extern void Parse(void *p, int type, union TokenData data, struct Parse *parse);
 
-/*
-
-План:
-1)   Сделать хорошие сообщения об ошибках.
-2)   Реализовать номальные метки!
-
-*/
-
 #define MIN_ADDRESS 0x200
 #define MAX_ADDRESS 0x1000
 #define BUFFER_SIZE (MAX_ADDRESS - MIN_ADDRESS)
@@ -36,63 +28,94 @@ extern void Parse(void *p, int type, union TokenData data, struct Parse *parse);
 static const char *inputFilePath  = NULL;
 static const char *outputFilePath = NULL;
 
-static int line     = 1;
-static int column   = 1;
+static int line   = 1;
+static int column = 1;
 
-static uint16_t machineCode[BUFFER_SIZE];
-static int      currentInstruction = 0;
-
-struct LabelPosition {
+static struct LabelAddress {
     char            *label;
-    int             position;
+    int             address;
     UT_hash_handle  hh;
 } *labels = NULL;
+
+#define PLACEHOLDER_ADDRESS    (-1)
+
+static uint16_t             machineCode[BUFFER_SIZE];
+static struct LabelAddress  *forwardLabel[BUFFER_SIZE];
+static int                  currentInstruction = 0;
 
 static void             *parser;
 static struct Token     token;
 
 static void 
 error(void) {
-    fprintf(stderr, "oh shi... at %d:%d\n", line, column);
-    /* ToDo: good error messages */
+    die("Error at %d:%d", line, column);
 }
 
-#define LITTLE_TO_BIG(x) ((((x) >> 8) & 0xff) | ((x) & 0xff) << 8)
+static uint16_t
+swapBytes(uint16_t x) {
+    return (((x) >> 8) & 0xff) | ((x) & 0xff) << 8;
+}
 
 static void 
 addInstruction(uint16_t instruction) {
     if (BUFFER_SIZE <= currentInstruction) {
         die("Number of instructions exceeds memory limit.");
     }
-    machineCode[currentInstruction++] = LITTLE_TO_BIG(instruction);
+    machineCode[currentInstruction++] = swapBytes(instruction);
 }
 
 static void 
-createLabel(char *label) {
-    struct LabelPosition *lp;
-    HASH_FIND_STR(labels, label, lp);
-    if (lp) die("label(%s) is defined multiple times.", label);
-    lp = emalloc(sizeof(struct LabelPosition));
-    *lp = (struct LabelPosition) {
-        .label = label,
-        .position = MIN_ADDRESS + 2 * currentInstruction,
-    };
-    HASH_ADD_STR(labels, label, lp);
+addLabel(char *label) {
+    struct LabelAddress *la;
+    HASH_FIND_STR(labels, label, la);
+    if (la && PLACEHOLDER_ADDRESS == la->address) {
+        la->address = MIN_ADDRESS + 2 * currentInstruction;
+    } else if (!la) {
+        la = emalloc(sizeof(struct LabelAddress));
+        *la = (struct LabelAddress) {
+            .label      = label,
+            .address    = MIN_ADDRESS + 2 * currentInstruction,
+        };
+        HASH_ADD_STR(labels, label, la);
+    } else {
+        die("label(%s) is defined multiple times.", label);
+    }
 }
 
 static int 
 getLabelAddress(char *label) {
-    struct LabelPosition *lp;
-    HASH_FIND_STR(labels, label, lp);
-    if (!lp) die("Unknown label: %s.", label);
-    return lp->position;
-    /* ToDo: remember label and cursor position for second pass if label doesn't exist yet */
+    struct LabelAddress *la;
+    HASH_FIND_STR(labels, label, la);
+    if (!la) {
+        la = emalloc(sizeof(struct LabelAddress));
+        *la = (struct LabelAddress) {
+            .label      = label,
+            .address    = PLACEHOLDER_ADDRESS,
+        };
+        HASH_ADD_STR(labels, label, la);
+        forwardLabel[currentInstruction] = la;
+    }
+    return la->address;
+}
+
+static void
+fillForwardLabelAddresses(void) {
+    for (int i = 0; i < currentInstruction; ++i) {
+        struct LabelAddress *la = forwardLabel[i];
+        if (NULL == la) continue;
+        if (PLACEHOLDER_ADDRESS == la->address) {
+            die("Unknown label: %s", la->label);
+        }
+        uint16_t code       = swapBytes(machineCode[i]);
+        uint16_t address    = la->address; /* notify overflow? */
+        machineCode[i]      = swapBytes(code & 0xf000 | address & 0x0fff);
+    }
 }
 
 static struct Parse parse = {
     .error              = error,
     .addInstruction     = addInstruction,
-    .createLabel        = createLabel,
+    .addLabel           = addLabel,
     .getLabelAddress    = getLabelAddress,
 };
 
@@ -115,22 +138,20 @@ saveMachineCode(void) {
 }
 
 int main(int argc, char *argv[]) {
+    char *input, *cursor;
     if (argc != 3) {
         fprintf(stderr, "usage: %s InputFile.s OutputFile.rom\n", argv[0]);
         exit(1);
     }
-    inputFilePath = argv[1];
-    outputFilePath = argv[2];
-    char *input, *cursor;
-    input = cursor = loadFile(inputFilePath);
-    parser = ParseAlloc(emalloc);
+    inputFilePath   = argv[1];
+    outputFilePath  = argv[2];
+    input = cursor  = loadFile(inputFilePath);
+    parser          = ParseAlloc(emalloc);
     while ((token.type = lexerNextToken(&cursor, &token.data, &line, &column))) {
-#ifndef NDEBUG
-        lexerPrintToken(stderr, token.type, token.data, line, column);
-#endif
         Parse(parser, token.type, token.data, &parse);
     }
     Parse(parser, 0, token.data, &parse);
     free(input);
+    fillForwardLabelAddresses();
     saveMachineCode();
 }

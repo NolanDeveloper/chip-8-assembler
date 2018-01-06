@@ -10,7 +10,9 @@ all: build/as
 
 .PHONY: clean
 clean:
+	mv ./build/.gitignore ./src/.gitignore
 	$(RM) -rf ./build && mkdir build
+	mv ./src/.gitignore ./build/.gitignore 
 
 build/%.o: build/%.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@

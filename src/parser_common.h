@@ -1,6 +1,6 @@
 struct Parse {
     void    (*error)(void);
     void    (*addInstruction)(uint16_t instruction);
-    void    (*createLabel)(char *label);
+    void    (*addLabel)(char *label);
     int     (*getLabelAddress)(char *label);
 };
