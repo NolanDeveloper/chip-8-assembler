@@ -29,16 +29,15 @@ hxyn(uint16_t h, uint16_t x, uint16_t y, uint16_t n) {
 %type v             { int }
 %type instruction   { uint16_t }
 
-%extra_argument     { struct Parse * parse }
-%syntax_error       { parse->error(); }
+%syntax_error       { error(); }
 
 start ::= unit.
 
 unit ::= unit instructionOrLabel.
 unit ::= instructionOrLabel.
 
-instructionOrLabel ::= instruction(A). { parse->addInstruction(A);  }
-instructionOrLabel ::= LABEL(A) COLON. { parse->addLabel(A.sValue); }
+instructionOrLabel ::= instruction(A). { addInstruction(A);  }
+instructionOrLabel ::= LABEL(A) COLON. { addLabel(A.sValue); }
 
 v(A) ::= V0. { A = 0x0; }
 v(A) ::= V1. { A = 0x1; }
@@ -58,7 +57,7 @@ v(A) ::= VE. { A = 0xE; }
 v(A) ::= VF. { A = 0xF; }
 
 address(A) ::= INTEGER(B). { A = B.iValue; }
-address(A) ::= LABEL(B).   { A = parse->getLabelAddress(B.sValue); }
+address(A) ::= LABEL(B).   { A = getLabelAddress(B.sValue); }
 
 instruction(A) ::= CLS.                       { A = 0x00e0; }
 instruction(A) ::= RET.                       { A = 0x00ee; }

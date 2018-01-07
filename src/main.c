@@ -19,7 +19,7 @@
 
 extern void *ParseAlloc(void *(*mallocProc)(size_t));
 extern void ParseFree(void *p, void (*freeProc)(void*));
-extern void Parse(void *p, int type, union TokenData data, struct Parse *parse);
+extern void Parse(void *p, int type, union TokenData data);
 
 #define MIN_ADDRESS 0x200
 #define MAX_ADDRESS 0x1000
@@ -46,7 +46,7 @@ static int                  currentInstruction = 0;
 static void             *parser;
 static struct Token     token;
 
-static void 
+extern void 
 error(void) {
     die("Error at %d:%d", line, column);
 }
@@ -56,7 +56,7 @@ swapBytes(uint16_t x) {
     return (((x) >> 8) & 0xff) | ((x) & 0xff) << 8;
 }
 
-static void 
+extern void 
 addInstruction(uint16_t instruction) {
     if (BUFFER_SIZE <= currentInstruction) {
         die("Number of instructions exceeds memory limit.");
@@ -64,7 +64,7 @@ addInstruction(uint16_t instruction) {
     machineCode[currentInstruction++] = swapBytes(instruction);
 }
 
-static void 
+extern void 
 addLabel(char *label) {
     struct LabelAddress *la;
     HASH_FIND_STR(labels, label, la);
@@ -82,7 +82,7 @@ addLabel(char *label) {
     }
 }
 
-static int 
+extern int 
 getLabelAddress(char *label) {
     struct LabelAddress *la;
     HASH_FIND_STR(labels, label, la);
@@ -108,16 +108,9 @@ fillForwardLabelAddresses(void) {
         }
         uint16_t code       = swapBytes(machineCode[i]);
         uint16_t address    = la->address; /* notify overflow? */
-        machineCode[i]      = swapBytes(code & 0xf000 | address & 0x0fff);
+        machineCode[i]      = swapBytes((code & 0xf000) | (address & 0x0fff));
     }
 }
-
-static struct Parse parse = {
-    .error              = error,
-    .addInstruction     = addInstruction,
-    .addLabel           = addLabel,
-    .getLabelAddress    = getLabelAddress,
-};
 
 static void
 saveMachineCode(void) {
@@ -148,9 +141,9 @@ int main(int argc, char *argv[]) {
     input = cursor  = loadFile(inputFilePath);
     parser          = ParseAlloc(emalloc);
     while ((token.type = lexerNextToken(&cursor, &token.data, &line, &column))) {
-        Parse(parser, token.type, token.data, &parse);
+        Parse(parser, token.type, token.data);
     }
-    Parse(parser, 0, token.data, &parse);
+    Parse(parser, 0, token.data);
     free(input);
     fillForwardLabelAddresses();
     saveMachineCode();
