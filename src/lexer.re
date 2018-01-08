@@ -31,13 +31,16 @@ strtoi(const char *string, char **endptr, int base) {
 extern int
 lexerNextToken(char **cursor, union TokenData *data, int *line, int *column) {
 #define RETURN(A) do { *column += *cursor - token; return A; } while(0)
-    char *token;
+    char *token, *marker;
 restart:;
     token = *cursor;
     /*!re2c
         re2c:define:YYCTYPE     = char;
         re2c:define:YYCURSOR    = *cursor;
+        re2c:define:YYMARKER    = marker;
         re2c:yyfill:enable      = 0;
+        * { die("Unknown token: \"%.5s...\"", token); }
+        "\x00" { return 0; }
         'CLS'   { RETURN(CLS);  }
         'RET'   { RETURN(RET);  }
         'JP'    { RETURN(JP);   }
@@ -66,8 +69,6 @@ restart:;
         'F'     { RETURN(F);  }
         'B'     { RETURN(B);  }
         '[I]'   { RETURN(II); }
-        [0-9]+  { data->iValue = strtoi(token, NULL, 10); 
-                  RETURN(INTEGER); }
         'V0'    { RETURN(V0); }
         'V1'    { RETURN(V1); }
         'V2'    { RETURN(V2); }
@@ -84,6 +85,22 @@ restart:;
         'VD'    { RETURN(VD); }
         'VE'    { RETURN(VE); }
         'VF'    { RETURN(VF); }
+        // Decimal literal
+        [0-9]+ { 
+            data->iValue = strtoi(token, NULL, 10); 
+            RETURN(INTEGER); 
+        }
+        // Hexadecimal literal
+        '0x' [0-9a-fA-F]+ { 
+            data->iValue = strtoi(token + 2, NULL, 16);
+            RETURN(INTEGER); 
+        }
+        // Binary literal
+        '0b' [01]+ {
+            data->iValue = strtoi(token + 2, NULL, 2);
+            RETURN(INTEGER); 
+        }
+        // Label
         "." [_a-zA-Z0-9]+ {
             size_t length = *cursor - (token + 1);
             data->sValue = emalloc(length + 1);
@@ -91,15 +108,16 @@ restart:;
             data->sValue[length] = '\0';
             RETURN(LABEL);
         }
-        [ \t]+ { goto restart; }
+        [ \t]+ { 
+            *column += *cursor - token; 
+            goto restart; 
+        }
         "\n" { 
             ++*line;
             *column = 0;
             goto restart;
         }
-        "\000" { return 0; }
     */
-    die("Unknown token: %.20s", token);
 }
 
 extern void

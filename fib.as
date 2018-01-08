@@ -1,5 +1,5 @@
-        ld      v0, 0
-        ld      v1, 1
+        ld      v0, 0x00
+        ld      v1, 0b01
         ld      v2, 1
         jp      .loop
 .loop:

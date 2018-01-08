@@ -1,10 +1,10 @@
 union TokenData {
-    int     iValue;
-    char    *sValue;
+    int iValue;
+    char *sValue;
 };
 
 struct Token {
-    int         type;
+    int type;
     union TokenData data;
 };
 
