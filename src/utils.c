@@ -51,7 +51,7 @@ die_(const char *source, const char *format, ...) {
     va_start(vargs, format);
     fprintf(stderr, "%s: ", source);
     vfprintf(stderr, format, vargs);
-    fprintf(stderr, ".\n");
+    fprintf(stderr, "\n");
     va_end(vargs);
     exit(1);
 }

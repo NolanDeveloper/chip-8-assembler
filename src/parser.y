@@ -50,57 +50,46 @@ v(A) ::= VD. { A = 0xD; }
 v(A) ::= VE. { A = 0xE; }
 v(A) ::= VF. { A = 0xF; }
 
-address(A) ::= INTEGER(B). { A = B.iValue; }
-address(A) ::= LABEL(B).   { A = cgGetLabelAddress(B.sValue); }
-
 instruction ::= CLS.                       { cgEmitCls(); }
 instruction ::= RET.                       { cgEmitRet(); }
-instruction ::= JP address(A).             { cgEmitJpAddr(A);   }
-instruction ::= CALL address(A).           { cgEmitCallAddr(A); }
+instruction ::= JP INTEGER(A).             { cgEmitJpAddri(A.iValue); }
+instruction ::= JP LABEL(A).               { cgEmitJpAddrl(A.sValue); }
+instruction ::= CALL INTEGER(A).           { cgEmitCallAddri(A.iValue); }
+instruction ::= CALL LABEL(A).             { cgEmitCallAddrl(A.sValue); }
 instruction ::= SE v(A) COMMA INTEGER(B).  { cgEmitSeVxByte(A, B.iValue);  }
 instruction ::= SNE v(A) COMMA INTEGER(B). { cgEmitSneVxByte(A, B.iValue); }
-instruction ::= SE v(A) COMMA v(B).        { cgEmitSeVxVy(A, B);    }
+instruction ::= SE v(A) COMMA v(B).        { cgEmitSeVxVy(A, B); }
 instruction ::= LD v(A) COMMA INTEGER(B).  { cgEmitLdVxByte(A, B.iValue);  }
 instruction ::= ADD v(A) COMMA INTEGER(B). { cgEmitAddVxByte(A, B.iValue); }
-instruction ::= LD v(A) COMMA v(B).        { cgEmitLdVxVy(A, B);    }
-instruction ::= OR v(A) COMMA v(B).        { cgEmitOrVxVy(A, B);    }
-instruction ::= AND v(A) COMMA v(B).       { cgEmitAndVxVy(A, B);   }
-instruction ::= XOR v(A) COMMA v(B).       { cgEmitXorVxVy(A, B);   }
-instruction ::= ADD v(A) COMMA v(B).       { cgEmitAddVxVy(A, B);   }
-instruction ::= SUB v(A) COMMA v(B).       { cgEmitSubVxVy(A, B);   }
-instruction ::= SHR v(A).                  { cgEmitShrVx(A);        }
-instruction ::= SUBN v(A) COMMA v(B).      { cgEmitSubnVxVy(A, B);  }
-instruction ::= SHL v(A).                  { cgEmitShlVx(A);        }
-instruction ::= SNE v(A) COMMA v(B).       { cgEmitSneVxVy(A, B);   }
-instruction ::= LD I COMMA address(A).     { cgEmitLdIAddr(A);      }
-instruction ::= JP V0 COMMA address(A).    { cgEmitJpV0Addr(A);     }
+instruction ::= LD v(A) COMMA v(B).        { cgEmitLdVxVy(A, B); }
+instruction ::= OR v(A) COMMA v(B).        { cgEmitOrVxVy(A, B); }
+instruction ::= AND v(A) COMMA v(B).       { cgEmitAndVxVy(A, B); }
+instruction ::= XOR v(A) COMMA v(B).       { cgEmitXorVxVy(A, B); }
+instruction ::= ADD v(A) COMMA v(B).       { cgEmitAddVxVy(A, B); }
+instruction ::= SUB v(A) COMMA v(B).       { cgEmitSubVxVy(A, B); }
+instruction ::= SHR v(A).                  { cgEmitShrVx(A); }
+instruction ::= SUBN v(A) COMMA v(B).      { cgEmitSubnVxVy(A, B); }
+instruction ::= SHL v(A).                  { cgEmitShlVx(A); }
+instruction ::= SNE v(A) COMMA v(B).       { cgEmitSneVxVy(A, B); }
+instruction ::= LD I COMMA INTEGER(A).     { cgEmitLdIAddri(A.iValue); }
+instruction ::= LD I COMMA LABEL(A).       { cgEmitLdIAddrl(A.sValue); }
+instruction ::= JP V0 COMMA INTEGER(A).    { cgEmitJpV0Addri(A.iValue); }
+instruction ::= JP V0 COMMA LABEL(A).      { cgEmitJpV0Addrl(A.sValue); }
 instruction ::= RND v(A) COMMA INTEGER(B). { cgEmitRndVxByte(A, B.iValue); }
 instruction ::= DRW v(A) COMMA v(B) COMMA INTEGER(C). { cgEmitDrwVxVyNibble(A, B, C.iValue); }
-instruction ::= SKP v(A).         { cgEmitSkpVx(A);  }
+instruction ::= SKP v(A).         { cgEmitSkpVx(A); }
 instruction ::= SKNP v(A).        { cgEmitSknpVx(A); }
 instruction ::= LD v(A) COMMA DT. { cgEmitLdVxDt(A); }
-instruction ::= LD v(A) COMMA K.  { cgEmitLdVxK(A);  }
+instruction ::= LD v(A) COMMA K.  { cgEmitLdVxK(A); }
 instruction ::= LD DT COMMA v(A). { cgEmitLdDtVx(A); }
 instruction ::= LD ST COMMA v(A). { cgEmitLdStVx(A); }
 instruction ::= ADD I COMMA v(A). { cgEmitAddIVx(A); }
-instruction ::= LD F COMMA v(A).  { cgEmitLdFVx(A);  }
-instruction ::= LD B COMMA v(A).  { cgEmitLdBVx(A);  }
+instruction ::= LD F COMMA v(A).  { cgEmitLdFVx(A); }
+instruction ::= LD B COMMA v(A).  { cgEmitLdBVx(A); }
 instruction ::= LD II COMMA v(A). { cgEmitLdIIVx(A); }
 instruction ::= LD v(A) COMMA II. { cgEmitLdVxII(A); }
 
 %code {
-
-static const char *inputFilePath  = NULL;
-static const char *outputFilePath = NULL;
-
-static void
-saveMachineCode(void) {
-    FILE *f = fopen(outputFilePath, "w");
-    if (!f) die("Can't open file, %s", strerror(errno));
-	size_t n = fwrite(cgMachineCode, sizeof(cgMachineCode[0]), (size_t)cgInstructionPointer, f);
-    if (cgInstructionPointer != n) die("Can't write to file: %s", strerror(errno));
-    fclose(f);
-}
 
 int main(int argc, char *argv[]) {
     char *cursor;
@@ -109,16 +98,15 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "usage: %s InputFile.s OutputFile.rom\n", argv[0]);
         exit(1);
     }
-    inputFilePath   = argv[1];
-    outputFilePath  = argv[2];
-    cursor          = loadFile(inputFilePath);
-    void *parser    = ParseAlloc(emalloc);
+    const char * inputFilePath = argv[1];
+    const char * outputFilePath = argv[2];
+    cursor = loadFile(inputFilePath);
+    void *parser = ParseAlloc(emalloc);
     while ((token.type = lexerNextToken(&cursor, &token.data, &line, &column))) {
         Parse(parser, token.type, token.data);
     }
     Parse(parser, 0, token.data);
-    cgFillForwardLabelAddresses();
-    saveMachineCode();
+    cgSaveMachineCodeToFile(outputFilePath);
 }
 
 } /* end %code */
