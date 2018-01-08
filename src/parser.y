@@ -1,23 +1,19 @@
 %include {
 
-#include <stdint.h>
-#include <assert.h> /* lempar.c requires this include */
-
 #include "parser_common.h"
 #include "lexer.h"
 
-static uint16_t
-hnnn(uint16_t h, uint16_t nnn) {
+static unsigned short hnnn(unsigned short h, unsigned short nnn) {
     return (h & 0xf) << 12 | (nnn & 0xfff);
 }
 
-static uint16_t
-hxkk(uint16_t h, uint16_t x, uint16_t kk) {
+static unsigned short
+hxkk(unsigned short h, unsigned short x, unsigned short kk) {
     return (h & 0xf) << 12 | (x & 0xf) << 8 | (kk & 0xff);
 }
 
-static uint16_t
-hxyn(uint16_t h, uint16_t x, uint16_t y, uint16_t n) {
+static unsigned short
+hxyn(unsigned short h, unsigned short x, unsigned short y, unsigned short n) {
     return (h & 0xf) << 12 | (x & 0xf) << 8 | (y & 0xf) << 4 | (n & 0xf);
 }
 
@@ -27,7 +23,7 @@ hxyn(uint16_t h, uint16_t x, uint16_t y, uint16_t n) {
 
 %type address       { int }
 %type v             { int }
-%type instruction   { uint16_t }
+%type instruction   { unsigned short }
 
 %syntax_error       { error(); }
 

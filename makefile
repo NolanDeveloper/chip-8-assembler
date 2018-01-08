@@ -1,7 +1,7 @@
 .SUFFIXES:
 .PRECIOUS: build/%.c
 
-CFLAGS += -g -std=c99 -pedantic -Wall -Wextra
+CFLAGS += -g -std=c99 -pedantic -Wall -Wextra -Werror
 CPPFLAGS += -Isrc -Ibuild
 OBJS := 
 
