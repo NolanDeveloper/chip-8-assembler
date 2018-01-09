@@ -101,6 +101,7 @@ int main(int argc, char *argv[]) {
     const char * inputFilePath = argv[1];
     const char * outputFilePath = argv[2];
     cursor = loadFile(inputFilePath);
+    cgInit();
     void *parser = ParseAlloc(emalloc);
     while ((token.type = lexerNextToken(&cursor, &token.data, &line, &column))) {
         Parse(parser, token.type, token.data);

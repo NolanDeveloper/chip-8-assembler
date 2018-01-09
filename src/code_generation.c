@@ -3,29 +3,42 @@
 #include <stdio.h>
 #include <errno.h>
 #include <stdbool.h>
+#include <string.h>
 
-#include <uthash.h>
+#include <search.h>
 
 #include "code_generation.h"
 #include "utils.h"
 
 #define die(...) die_("codegen", __VA_ARGS__)
 
-static struct LabelAddress {
+struct LabelAddress {
     char            *label;
     uint_fast16_t   address;
-    bool            forwardUsed;
-    UT_hash_handle  hh;
-} *labels = NULL;
+    bool            undefined;
+};
 
-static uint_least8_t        machineCode[BUFFER_SIZE];
-static uint_fast16_t        instructionPointer = 0;
+static int           labels; /* hash table 'hsearch(3)' */
+static uint_least8_t machineCode[BUFFER_SIZE];
+static uint_fast16_t instructionPointer = 0;
+
+extern void 
+cgInit(void) {
+    labels = hcreate(MAX_LABELS);
+    if (labels) return;
+    die("Can't create hash table for labels: %s", strerror(errno));
+}
 
 extern void 
 cgEmitLabel(char *label) {
-    struct LabelAddress *la;
-    HASH_FIND_STR(labels, label, la);
-    if (la && la->forwardUsed) { /* First definition. Label was used before. */
+    ENTRY entry = { .key = label };
+    ENTRY *item = hsearch(entry, FIND);
+    struct LabelAddress *la = item ? item->data : NULL;
+    if (la) {
+        if (!la->undefined) { /* Second definition. */
+            die("label(%s) defined multiple times.", label);
+        }
+        /* First definition. Label was used before. */
         uint_fast16_t address = MIN_ADDRESS + instructionPointer;
         uint_fast16_t i, j = la->address;
         do {
@@ -34,35 +47,18 @@ cgEmitLabel(char *label) {
             machineCode[i    ] = (machineCode[i] & 0xf0) | ((address >> 8) & 0x0f);
             machineCode[i + 1] = address & 0xff;
         } while (j);
-        la->forwardUsed = false;
-        la->address     = address;
-    } else if (!la) { /* First definition. Label was not used before. */
+        la->undefined = false;
+        la->address   = address;
+    } else { /* First definition. Label was not used before. */
         la = emalloc(sizeof(struct LabelAddress));
         *la = (struct LabelAddress) {
-            .label       = label,
-            .address     = MIN_ADDRESS + instructionPointer,
-            .forwardUsed = false,
+            .label     = label,
+            .address   = MIN_ADDRESS + instructionPointer,
+            .undefined = false,
         };
-        HASH_ADD_STR(labels, label, la);
-    } else { /* Second definition. */
-        die("label(%s) defined multiple times.", label);
-    }
-}
-
-extern uint_fast16_t 
-cgGetLabelAddress(char *label) {
-    struct LabelAddress *la;
-    HASH_FIND_STR(labels, label, la);
-    if (!la) {
-        la = emalloc(sizeof(struct LabelAddress));
-        *la = (struct LabelAddress) {
-            .label       = label,
-            .address     = PLACEHOLDER_ADDRESS,
-            .forwardUsed = true,
-        };
-        HASH_ADD_STR(labels, label, la);
-    }
-    return la->address & 0xfff;
+        entry.data = la;
+        hsearch(entry, ENTER);
+    } 
 }
 
 extern void
@@ -101,20 +97,22 @@ emit_hnnni(uint_fast16_t h, uint_fast16_t nnn) {
 
 static void
 emit_hnnnl(uint_fast16_t h, char *label) {
-    struct LabelAddress *la;
-    HASH_FIND_STR(labels, label, la);
+    ENTRY entry = { .key = label };
+    ENTRY *item = hsearch(entry, FIND);
+    struct LabelAddress *la = item ? item->data : NULL;
     if (!la) { /* If label was neither defined nor used before. */
         /* Save instruction pointer in the table of labels to fill address when
          * it will be defined. */
         la = emalloc(sizeof(struct LabelAddress));
         *la = (struct LabelAddress) {
-            .label       = label,
-            .address     = instructionPointer,
-            .forwardUsed = true,
+            .label      = label,
+            .address    = instructionPointer,
+            .undefined  = true,
         };
-        HASH_ADD_STR(labels, label, la);
+        entry.data = la;
+        hsearch(entry, ENTER);
         emit_hnnni(h, 0); 
-    } else if (la->forwardUsed) { /* If label was not defined but was used before. */
+    } else if (la->undefined) { /* If label was not defined but was used before. */
         uint_fast16_t previousUsage = la->address;
         /* Update table of labels with new last usage site. */
         la->address = instructionPointer;

@@ -2,6 +2,9 @@
 #define MAX_ADDRESS             0x1000
 #define BUFFER_SIZE             (MAX_ADDRESS - MIN_ADDRESS)
 #define PLACEHOLDER_ADDRESS     MAX_ADDRESS
+#define MAX_LABELS              2048
+
+extern void cgInit(void);
 
 extern void cgEmitLabel(char *label);
 
