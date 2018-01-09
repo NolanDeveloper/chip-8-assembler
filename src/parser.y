@@ -1,10 +1,11 @@
 %include {
 
-#include <stdint.h>
+#include <inttypes.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
+#include <stdbool.h>
 
 #include "lexer.h"
 #include "utils.h"
@@ -12,23 +13,37 @@
 
 #define die(...) die_("parser", __VA_ARGS__)
 
-static int line   = 1;
-static int column = 1;
+static uint_fast32_t line = 1;
+static bool          success = true;
+
+static const char *outputFilePath;
 
 } /* end %include */
 
 %token_type         { union TokenData }
 
-%type address       { int }
-%type v             { int }
-%type instruction   { unsigned short }
+%type v             { uint_fast16_t }
+%type integer       { uint_fast16_t }
+%type label         { char* }
 
-%syntax_error       { die("Error at %d:%d", line, column); }
+%syntax_error {
+    success = false;
+    fprintf(stderr, "parser: Syntax error at line %"PRIuFAST16".\n", line);
+}
 
-start ::= unit.
+start ::= begin unit end.
 
-unit ::= unit instructionOrLabel.
-unit ::= instructionOrLabel.
+begin ::= . { cgInit(); }
+
+end ::= . { if (success) cgSaveMachineCodeToFile(outputFilePath); }
+
+unit ::= unit line.
+unit ::= line.
+
+line ::= instructionOrLabel new_line.
+line ::= error new_line.
+
+new_line ::= NEW_LINE. { ++line; }
 
 instructionOrLabel ::= instruction.
 instructionOrLabel ::= LABEL(A) COLON. { cgEmitLabel(A.sValue); }
@@ -50,17 +65,21 @@ v(A) ::= VD. { A = 0xD; }
 v(A) ::= VE. { A = 0xE; }
 v(A) ::= VF. { A = 0xF; }
 
+integer(A) ::= INTEGER(B). { A = B.iValue; }
+
+label(A) ::= LABEL(B). { A = B.sValue; }
+
 instruction ::= CLS.                        { cgEmitCls(); }
 instruction ::= RET.                        { cgEmitRet(); }
-instruction ::= JP INTEGER(A).              { cgEmitJpAddri(A.iValue); }
-instruction ::= JP LABEL(A).                { cgEmitJpAddrl(A.sValue); }
-instruction ::= CALL INTEGER(A).            { cgEmitCallAddri(A.iValue); }
-instruction ::= CALL LABEL(A).              { cgEmitCallAddrl(A.sValue); }
-instruction ::= SE v(A) COMMA INTEGER(B).   { cgEmitSeVxByte(A, B.iValue);  }
-instruction ::= SNE v(A) COMMA INTEGER(B).  { cgEmitSneVxByte(A, B.iValue); }
+instruction ::= JP integer(A).              { cgEmitJpAddri(A); }
+instruction ::= JP label(A).                { cgEmitJpAddrl(A); }
+instruction ::= CALL integer(A).            { cgEmitCallAddri(A); }
+instruction ::= CALL label(A).              { cgEmitCallAddrl(A); }
+instruction ::= SE v(A) COMMA integer(B).   { cgEmitSeVxByte(A, B);  }
+instruction ::= SNE v(A) COMMA integer(B).  { cgEmitSneVxByte(A, B); }
 instruction ::= SE v(A) COMMA v(B).         { cgEmitSeVxVy(A, B); }
-instruction ::= LD v(A) COMMA INTEGER(B).   { cgEmitLdVxByte(A, B.iValue);  }
-instruction ::= ADD v(A) COMMA INTEGER(B).  { cgEmitAddVxByte(A, B.iValue); }
+instruction ::= LD v(A) COMMA integer(B).   { cgEmitLdVxByte(A, B);  }
+instruction ::= ADD v(A) COMMA integer(B).  { cgEmitAddVxByte(A, B); }
 instruction ::= LD v(A) COMMA v(B).         { cgEmitLdVxVy(A, B); }
 instruction ::= OR v(A) COMMA v(B).         { cgEmitOrVxVy(A, B); }
 instruction ::= AND v(A) COMMA v(B).        { cgEmitAndVxVy(A, B); }
@@ -71,12 +90,12 @@ instruction ::= SHR v(A).                   { cgEmitShrVx(A); }
 instruction ::= SUBN v(A) COMMA v(B).       { cgEmitSubnVxVy(A, B); }
 instruction ::= SHL v(A).                   { cgEmitShlVx(A); }
 instruction ::= SNE v(A) COMMA v(B).        { cgEmitSneVxVy(A, B); }
-instruction ::= LD I COMMA INTEGER(A).      { cgEmitLdIAddri(A.iValue); }
-instruction ::= LD I COMMA LABEL(A).        { cgEmitLdIAddrl(A.sValue); }
-instruction ::= JP V0 COMMA INTEGER(A).     { cgEmitJpV0Addri(A.iValue); }
-instruction ::= JP V0 COMMA LABEL(A).       { cgEmitJpV0Addrl(A.sValue); }
-instruction ::= RND v(A) COMMA INTEGER(B).  { cgEmitRndVxByte(A, B.iValue); }
-instruction ::= DRW v(A) COMMA v(B) COMMA INTEGER(C). { cgEmitDrwVxVyNibble(A, B, C.iValue); }
+instruction ::= LD I COMMA integer(A).      { cgEmitLdIAddri(A); }
+instruction ::= LD I COMMA label(A).        { cgEmitLdIAddrl(A); }
+instruction ::= JP V0 COMMA integer(A).     { cgEmitJpV0Addri(A); }
+instruction ::= JP V0 COMMA label(A).       { cgEmitJpV0Addrl(A); }
+instruction ::= RND v(A) COMMA integer(B).  { cgEmitRndVxByte(A, B); }
+instruction ::= DRW v(A) COMMA v(B) COMMA integer(C). { cgEmitDrwVxVyNibble(A, B, C); }
 instruction ::= SKP v(A).                   { cgEmitSkpVx(A); }
 instruction ::= SKNP v(A).                  { cgEmitSknpVx(A); }
 instruction ::= LD v(A) COMMA DT.           { cgEmitLdVxDt(A); }
@@ -92,22 +111,19 @@ instruction ::= LD v(A) COMMA II.           { cgEmitLdVxII(A); }
 %code {
 
 int main(int argc, char *argv[]) {
-    char *cursor;
-    struct Token token;
     if (argc != 3) {
         fprintf(stderr, "usage: %s InputFile.s OutputFile.rom\n", argv[0]);
         exit(1);
     }
-    const char * inputFilePath = argv[1];
-    const char * outputFilePath = argv[2];
-    cursor = loadFile(inputFilePath);
-    cgInit();
+    const char *inputFilePath = argv[1];
+    outputFilePath = argv[2];
+    char *cursor = loadFile(inputFilePath);
     void *parser = ParseAlloc(emalloc);
-    while ((token.type = lexerNextToken(&cursor, &token.data, &line, &column))) {
+    struct Token token;
+    while ((token.type = lexerNextToken(&cursor, &token.data))) {
         Parse(parser, token.type, token.data);
     }
     Parse(parser, 0, token.data);
-    cgSaveMachineCodeToFile(outputFilePath);
 }
 
 } /* end %code */
