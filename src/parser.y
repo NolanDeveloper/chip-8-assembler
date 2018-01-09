@@ -93,7 +93,7 @@ instruction ::= LD v(A) COMMA II.           { cgEmitLdVxII(A); }
 
 int main(int argc, char *argv[]) {
     char *cursor;
-	struct Token token;
+    struct Token token;
     if (argc != 3) {
         fprintf(stderr, "usage: %s InputFile.s OutputFile.rom\n", argv[0]);
         exit(1);

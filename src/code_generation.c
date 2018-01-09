@@ -65,7 +65,7 @@ extern void
 cgSaveMachineCodeToFile(const char *path) {
     FILE *f = fopen(path, "w");
     if (!f) die("Can't open file, %s", strerror(errno));
-	size_t n = fwrite(machineCode, sizeof(machineCode[0]), (size_t)instructionPointer, f);
+    size_t n = fwrite(machineCode, sizeof(machineCode[0]), (size_t)instructionPointer, f);
     if (instructionPointer != n) die("Can't write to file: %s", strerror(errno));
     fclose(f);
 }
