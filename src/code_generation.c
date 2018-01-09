@@ -4,19 +4,55 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <string.h>
-
-#include <search.h>
+#include <stdlib.h>
 
 #include "code_generation.h"
 #include "utils.h"
 
 #define die(...) die_("codegen", __VA_ARGS__)
 
+#define TABLE_OF_LABELS_SIZE (MAX_LABELS / 5 * 4)
 struct LabelAddress {
+    uintmax_t       hash;
     char            *label;
     uint_fast16_t   address;
     bool            undefined;
 };
+static uint_fast32_t        numberOfLabels = 0;
+static struct LabelAddress  *labels[TABLE_OF_LABELS_SIZE];
+
+static struct LabelAddress *
+lookupLabel(char *label) {
+    uintmax_t hash = stringHash(label);
+    size_t index = hash % TABLE_OF_LABELS_SIZE;
+    struct LabelAddress *la;
+    while (NULL != (la = labels[index])) {
+        if (hash == la->hash && !strcmp(label, la->label)) {
+            return la;
+        }
+        index = (index + 1) % TABLE_OF_LABELS_SIZE;
+    }
+    return NULL;
+}
+
+static void
+addLabel(struct LabelAddress *newLabelAddress) {
+    char *label = newLabelAddress->label;
+    uintmax_t hash = newLabelAddress->hash = stringHash(label);
+    size_t index = hash % TABLE_OF_LABELS_SIZE;
+    struct LabelAddress *la;
+    while (NULL != (la = labels[index])) {
+        if (hash == la->hash && !strcmp(label, la->label)) {
+            free(la);
+            --numberOfLabels;
+            break;
+        }
+        index = (index + 1) % TABLE_OF_LABELS_SIZE;
+    }
+    ++numberOfLabels;
+    if (MAX_LABELS < numberOfLabels) die("Too many labels");
+    labels[index] = newLabelAddress;
+}
 
 static uint_least8_t machineCode[BUFFER_SIZE];
 static uint_fast16_t instructionPointer      = 0;
@@ -24,15 +60,18 @@ static uint_fast16_t numberOfUndefinedLabels = 0;
 
 extern void
 cgInit(void) {
-    if (hcreate(MAX_LABELS)) return;
-    die("Can't create hash table for labels: %s", strerror(errno));
+    /* Next is required for standard complience. `labels` will be filled with
+     * zeroes on launch hence label will have all bits set to zero but NULL can
+     * have different binary representation so we still have to manually assign
+     * NULL to each pointer. */
+    for (size_t i = 0; i < TABLE_OF_LABELS_SIZE; ++i) {
+        labels[i] = NULL;
+    }
 }
 
 extern void
 cgEmitLabel(char *label) {
-    ENTRY entry = { .key = label };
-    ENTRY *item = hsearch(entry, FIND);
-    struct LabelAddress *la = item ? item->data : NULL;
+    struct LabelAddress *la = lookupLabel(label);
     if (la) {
         if (!la->undefined) { /* Second definition. */
             die("label(%s) defined multiple times.", label);
@@ -56,8 +95,7 @@ cgEmitLabel(char *label) {
             .address   = MIN_ADDRESS + instructionPointer,
             .undefined = false,
         };
-        entry.data = la;
-        hsearch(entry, ENTER);
+        addLabel(la);
     }
 }
 
@@ -98,9 +136,7 @@ emit_hnnni(uint_fast16_t h, uint_fast16_t nnn) {
 
 static void
 emit_hnnnl(uint_fast16_t h, char *label) {
-    ENTRY entry = { .key = label };
-    ENTRY *item = hsearch(entry, FIND);
-    struct LabelAddress *la = item ? item->data : NULL;
+    struct LabelAddress *la = lookupLabel(label);
     if (!la) { /* If label was neither defined nor used before. */
         /* Save instruction pointer in the table of labels to fill address when
          * it will be defined. */
@@ -110,8 +146,7 @@ emit_hnnnl(uint_fast16_t h, char *label) {
             .address    = instructionPointer,
             .undefined  = true,
         };
-        entry.data = la;
-        hsearch(entry, ENTER);
+        addLabel(la);
         emit_hnnni(h, 0);
         ++numberOfUndefinedLabels;
     } else if (la->undefined) { /* If label was not defined but was used before. */

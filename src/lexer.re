@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <limits.h>
 #include <string.h>
+#include <stdint.h>
 
 #include "parser.h"
 #include "lexer.h"

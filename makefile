@@ -2,9 +2,9 @@
 .PRECIOUS: build/%.c
 .PHONY: all clean
 
-CFLAGS += -g -std=c99 -pedantic -Wall -Wextra -Werror
+CFLAGS += -g -std=c99 -pedantic -Wall -Wextra -Werror -MMD
 CPPFLAGS += -Isrc -Ibuild
-OBJS := 
+OBJS :=
 
 all: build/as
 
@@ -21,7 +21,7 @@ build/%.c: src/%.y
 	ln -fT $< $(patsubst %.c, %.y, $@)
 	lemon -q $(patsubst %.c, %.y, $@)
 
-build/%.c: src/%.re 
+build/%.c: src/%.re
 	re2c $< -o $@
 
 OBJS += build/code_generation.o
@@ -29,7 +29,9 @@ OBJS += build/utils.o
 OBJS += build/lexer.o
 OBJS += build/parser.o
 
-build/lexer.o: build/parser.o
+-include build/*.d
+
+build/lexer.o: build/parser.c
 
 build/as: $(OBJS)
 	$(CC) $(LDFLAGS) $(LDLIBS) -o $@ $^
