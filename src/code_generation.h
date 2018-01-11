@@ -10,6 +10,7 @@ extern void cgEmitLabel(char *label);
 
 extern void cgSaveMachineCodeToFile(const char *path);
 
+extern void cgEmitData(uint_fast16_t data);
 extern void cgEmitCls(void);
 extern void cgEmitRet(void);
 extern void cgEmitJpAddri(uint_fast16_t addr);

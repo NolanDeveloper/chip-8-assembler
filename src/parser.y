@@ -69,6 +69,7 @@ integer(A) ::= INTEGER(B). { A = B.iValue; }
 
 label(A) ::= LABEL(B). { A = B.sValue; }
 
+instruction ::= DATA integer(A).            { cgEmitData(A); }
 instruction ::= CLS.                        { cgEmitCls(); }
 instruction ::= RET.                        { cgEmitRet(); }
 instruction ::= JP integer(A).              { cgEmitJpAddri(A); }

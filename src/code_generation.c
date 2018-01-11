@@ -128,14 +128,14 @@ check(uint_fast16_t x, unsigned n) {
 }
 
 static void
-emit_hnnni(uint_fast16_t h, uint_fast16_t nnn) {
+emitHnnni(uint_fast16_t h, uint_fast16_t nnn) {
     check(h, 4);
     check(nnn, 12);
     emit(h << 12 | nnn);
 }
 
 static void
-emit_hnnnl(uint_fast16_t h, char *label) {
+emitHnnnl(uint_fast16_t h, char *label) {
     struct LabelAddress *la = lookupLabel(label);
     if (!la) { /* If label was neither defined nor used before. */
         /* Save instruction pointer in the table of labels to fill address when
@@ -147,20 +147,20 @@ emit_hnnnl(uint_fast16_t h, char *label) {
             .undefined  = true,
         };
         addLabel(la);
-        emit_hnnni(h, 0);
+        emitHnnni(h, 0);
         ++numberOfUndefinedLabels;
     } else if (la->undefined) { /* If label was not defined but was used before. */
         uint_fast16_t previousUsage = la->address;
         /* Update table of labels with new last usage site. */
         la->address = instructionPointer;
-        emit_hnnni(h, previousUsage);
+        emitHnnni(h, previousUsage);
     } else { /* If label was defined. */
-        emit_hnnni(h, la->address);
+        emitHnnni(h, la->address);
     }
 }
 
 static void
-emit_hxkk(uint_fast16_t h, uint_fast16_t x, uint_fast16_t kk) {
+emitHxkk(uint_fast16_t h, uint_fast16_t x, uint_fast16_t kk) {
     check(h, 4);
     check(x, 4);
     check(kk, 8);
@@ -168,7 +168,7 @@ emit_hxkk(uint_fast16_t h, uint_fast16_t x, uint_fast16_t kk) {
 }
 
 static void
-emit_hxyn(uint_fast16_t h, uint_fast16_t x, uint_fast16_t y, uint_fast16_t n) {
+emitHxyn(uint_fast16_t h, uint_fast16_t x, uint_fast16_t y, uint_fast16_t n) {
     check(h, 4);
     check(x, 4);
     check(y, 4);
@@ -176,43 +176,43 @@ emit_hxyn(uint_fast16_t h, uint_fast16_t x, uint_fast16_t y, uint_fast16_t n) {
     emit(h << 12 | x << 8 | y << 4 | n);
 }
 
-typedef uint_fast16_t Instr;
-
-extern void cgEmitCls(void)                      { emit(0x00e0); }
-extern void cgEmitRet(void)                      { emit(0x00ee); }
-extern void cgEmitJpAddri(Instr addr)            { emit_hnnni(0x1, addr); }
-extern void cgEmitJpAddrl(char *label)           { emit_hnnnl(0x1, label); }
-extern void cgEmitCallAddri(Instr addr)          { emit_hnnni(0x2, addr); }
-extern void cgEmitCallAddrl(char *label)         { emit_hnnnl(0x2, label); }
-extern void cgEmitSeVxByte(Instr x, Instr byte)  { emit_hxkk(0x3, x, byte); }
-extern void cgEmitSneVxByte(Instr x, Instr byte) { emit_hxkk(0x4, x, byte); }
-extern void cgEmitSeVxVy(Instr x, Instr y)       { emit_hxyn(0x5, x, y, 0); }
-extern void cgEmitLdVxByte(Instr x, Instr byte)  { emit_hxkk(0x6, x, byte); }
-extern void cgEmitAddVxByte(Instr x, Instr byte) { emit_hxkk(0x7, x, byte); }
-extern void cgEmitLdVxVy(Instr x, Instr y)       { emit_hxyn(0x8, x, y, 0); }
-extern void cgEmitOrVxVy(Instr x, Instr y)       { emit_hxyn(0x8, x, y, 1); }
-extern void cgEmitAndVxVy(Instr x, Instr y)      { emit_hxyn(0x8, x, y, 2); }
-extern void cgEmitXorVxVy(Instr x, Instr y)      { emit_hxyn(0x8, x, y, 3); }
-extern void cgEmitAddVxVy(Instr x, Instr y)      { emit_hxyn(0x8, x, y, 4); }
-extern void cgEmitSubVxVy(Instr x, Instr y)      { emit_hxyn(0x8, x, y, 5); }
-extern void cgEmitShrVx(Instr x)                 { emit_hxkk(0x8, x, 0x06); }
-extern void cgEmitSubnVxVy(Instr x, Instr y)     { emit_hxyn(0x8, x, y, 7); }
-extern void cgEmitShlVx(Instr x)                 { emit_hxkk(0x8, x, 0x0E); }
-extern void cgEmitSneVxVy(Instr x, Instr y)      { emit_hxyn(0x9, x, y, 0); }
-extern void cgEmitLdIAddri(Instr addr)           { emit_hnnni(0xA, addr); }
-extern void cgEmitLdIAddrl(char *label)          { emit_hnnnl(0xA, label); }
-extern void cgEmitJpV0Addri(Instr addr)          { emit_hnnni(0xB, addr); }
-extern void cgEmitJpV0Addrl(char *label)         { emit_hnnnl(0xB, label); }
-extern void cgEmitRndVxByte(Instr x, Instr byte) { emit_hxkk(0xC, x, byte); }
-extern void cgEmitDrwVxVyNibble(Instr x, Instr y, Instr nibble) { emit_hxyn(0xD, x, y, nibble); }
-extern void cgEmitSkpVx(Instr x)  { emit_hxkk(0xE, x, 0x9E); }
-extern void cgEmitSknpVx(Instr x) { emit_hxkk(0xE, x, 0xA1); }
-extern void cgEmitLdVxDt(Instr x) { emit_hxkk(0xF, x, 0x07); }
-extern void cgEmitLdVxK(Instr x)  { emit_hxkk(0xF, x, 0x0A); }
-extern void cgEmitLdDtVx(Instr x) { emit_hxkk(0xF, x, 0x15); }
-extern void cgEmitLdStVx(Instr x) { emit_hxkk(0xF, x, 0x18); }
-extern void cgEmitAddIVx(Instr x) { emit_hxkk(0xF, x, 0x1E); }
-extern void cgEmitLdFVx(Instr x)  { emit_hxkk(0xF, x, 0x29); }
-extern void cgEmitLdBVx(Instr x)  { emit_hxkk(0xF, x, 0x33); }
-extern void cgEmitLdIIVx(Instr x) { emit_hxkk(0xF, x, 0x55); }
-extern void cgEmitLdVxII(Instr x) { emit_hxkk(0xF, x, 0x65); }
+extern void cgEmitData(uint_fast16_t data)                       { emit(data); }
+extern void cgEmitCls(void)                                      { emit(0x00e0); }
+extern void cgEmitRet(void)                                      { emit(0x00ee); }
+extern void cgEmitJpAddri(uint_fast16_t addr)                    { emitHnnni(0x1, addr); }
+extern void cgEmitJpAddrl(char *label)                           { emitHnnnl(0x1, label); }
+extern void cgEmitCallAddri(uint_fast16_t addr)                  { emitHnnni(0x2, addr); }
+extern void cgEmitCallAddrl(char *label)                         { emitHnnnl(0x2, label); }
+extern void cgEmitSeVxByte(uint_fast16_t x, uint_fast16_t byte)  { emitHxkk(0x3, x, byte); }
+extern void cgEmitSneVxByte(uint_fast16_t x, uint_fast16_t byte) { emitHxkk(0x4, x, byte); }
+extern void cgEmitSeVxVy(uint_fast16_t x, uint_fast16_t y)       { emitHxyn(0x5, x, y, 0); }
+extern void cgEmitLdVxByte(uint_fast16_t x, uint_fast16_t byte)  { emitHxkk(0x6, x, byte); }
+extern void cgEmitAddVxByte(uint_fast16_t x, uint_fast16_t byte) { emitHxkk(0x7, x, byte); }
+extern void cgEmitLdVxVy(uint_fast16_t x, uint_fast16_t y)       { emitHxyn(0x8, x, y, 0); }
+extern void cgEmitOrVxVy(uint_fast16_t x, uint_fast16_t y)       { emitHxyn(0x8, x, y, 1); }
+extern void cgEmitAndVxVy(uint_fast16_t x, uint_fast16_t y)      { emitHxyn(0x8, x, y, 2); }
+extern void cgEmitXorVxVy(uint_fast16_t x, uint_fast16_t y)      { emitHxyn(0x8, x, y, 3); }
+extern void cgEmitAddVxVy(uint_fast16_t x, uint_fast16_t y)      { emitHxyn(0x8, x, y, 4); }
+extern void cgEmitSubVxVy(uint_fast16_t x, uint_fast16_t y)      { emitHxyn(0x8, x, y, 5); }
+extern void cgEmitShrVx(uint_fast16_t x)                         { emitHxkk(0x8, x, 0x06); }
+extern void cgEmitSubnVxVy(uint_fast16_t x, uint_fast16_t y)     { emitHxyn(0x8, x, y, 7); }
+extern void cgEmitShlVx(uint_fast16_t x)                         { emitHxkk(0x8, x, 0x0E); }
+extern void cgEmitSneVxVy(uint_fast16_t x, uint_fast16_t y)      { emitHxyn(0x9, x, y, 0); }
+extern void cgEmitLdIAddri(uint_fast16_t addr)                   { emitHnnni(0xA, addr); }
+extern void cgEmitLdIAddrl(char *label)                          { emitHnnnl(0xA, label); }
+extern void cgEmitJpV0Addri(uint_fast16_t addr)                  { emitHnnni(0xB, addr); }
+extern void cgEmitJpV0Addrl(char *label)                         { emitHnnnl(0xB, label); }
+extern void cgEmitRndVxByte(uint_fast16_t x, uint_fast16_t byte) { emitHxkk(0xC, x, byte); }
+extern void cgEmitDrwVxVyNibble(uint_fast16_t x, uint_fast16_t y, uint_fast16_t nibble)
+                                                                 { emitHxyn(0xD, x, y, nibble); }
+extern void cgEmitSkpVx(uint_fast16_t x)                         { emitHxkk(0xE, x, 0x9E); }
+extern void cgEmitSknpVx(uint_fast16_t x)                        { emitHxkk(0xE, x, 0xA1); }
+extern void cgEmitLdVxDt(uint_fast16_t x)                        { emitHxkk(0xF, x, 0x07); }
+extern void cgEmitLdVxK(uint_fast16_t x)                         { emitHxkk(0xF, x, 0x0A); }
+extern void cgEmitLdDtVx(uint_fast16_t x)                        { emitHxkk(0xF, x, 0x15); }
+extern void cgEmitLdStVx(uint_fast16_t x)                        { emitHxkk(0xF, x, 0x18); }
+extern void cgEmitAddIVx(uint_fast16_t x)                        { emitHxkk(0xF, x, 0x1E); }
+extern void cgEmitLdFVx(uint_fast16_t x)                         { emitHxkk(0xF, x, 0x29); }
+extern void cgEmitLdBVx(uint_fast16_t x)                         { emitHxkk(0xF, x, 0x33); }
+extern void cgEmitLdIIVx(uint_fast16_t x)                        { emitHxkk(0xF, x, 0x55); }
+extern void cgEmitLdVxII(uint_fast16_t x)                        { emitHxkk(0xF, x, 0x65); }
