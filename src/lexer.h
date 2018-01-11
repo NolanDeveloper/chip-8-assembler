@@ -1,5 +1,5 @@
 union TokenData {
-    int iValue;
+    uint_fast16_t iValue;
     char *sValue;
 };
 
@@ -9,4 +9,3 @@ struct Token {
 };
 
 extern int lexerNextToken(char **cursor, union TokenData *data);
-extern void lexerPrintToken(FILE *file, int type, union TokenData data);

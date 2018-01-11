@@ -7,3 +7,6 @@
         ld      v1, v2
         add     v2, v0
         jp      .loop
+        data    0b00000010
+        data    0b00000111
+        data    0b00000010

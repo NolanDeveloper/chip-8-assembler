@@ -17,8 +17,6 @@ emalloc(size_t size) {
     return p;
 }
 
-#define die(...) die_("input", __VA_ARGS__)
-
 static off_t
 getFileSize(const char *path) {
     struct stat st;
@@ -47,10 +45,9 @@ loadFile(const char *path) {
 }
 
 extern void
-die_(const char *source, const char *format, ...) {
+die(const char *format, ...) {
     va_list vargs;
     va_start(vargs, format);
-    fprintf(stderr, "%s: ", source);
     vfprintf(stderr, format, vargs);
     fprintf(stderr, "\n");
     va_end(vargs);
